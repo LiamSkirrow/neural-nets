@@ -50,7 +50,7 @@ def feedforward(input_sample, weight_matrices, neuron_list, bias_list):
     neuron_list[0] = input_sample
 
     # apply the matrix * vector + bias operation, across all neuron layers
-    for i in range(1, NUM_WEIGHTS_MATRICES):
+    for i in range(1, NUM_NEURON_LAYERS):
         neuron_list[i] = weight_matrices[i-1] @ neuron_list[i-1] + bias_list[i-1]
         # apply the activation function
         # TODO
@@ -67,17 +67,28 @@ if __name__ == '__main__':
     neuron_list     = init_neuron_list(neuron_list)
     bias_list       = init_bias_list(bias_list)
 
+    # print(weight_matrices)
+    # print(neuron_list)
+    # print(bias_list)
+
     # sanity check size of weights matrices
     print('showing dimensions of weights matrices...')
     for i in range(0, NUM_WEIGHTS_MATRICES):
         print(np.shape((weight_matrices[i])))
 
-    print('Neuron output layer before feedforward')
-    print(neuron_list[3])
+    # now to train the net...
+    # - read in one training sample input image
+    # - run feedforward()
+    # ?- calcuate loss function
+    # ?- run gradient descent
+    # ???
+    # - loop back to top, read in next image, repeat for whole training set
 
-    # now take a sample and feed it forward through the NN, input_sample must be a np.array()
-    neuron_list = feedforward(np.random.randn(784) * 0.01, weight_matrices, neuron_list, bias_list)
 
-    print('Neuron output layer after feedforward')
-    print(neuron_list[3])
-    
+    ### debug
+    # print('Neuron output layer before feedforward')
+    # print(neuron_list[3])
+    # # now take a sample and feed it forward through the NN, input_sample must be a np.array()
+    # neuron_list = feedforward(np.random.randn(784) * 0.01, weight_matrices, neuron_list, bias_list)
+    # print('Neuron output layer after feedforward')
+    # print(neuron_list[3])
