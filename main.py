@@ -34,8 +34,10 @@ print('showing dimensions of weights matrices...')
 for i in range(0, NUM_WEIGHTS_MATRICES):
     print(np.shape((weight_matrices[i])))
 
-# now populate the neuron list of lists, NUM_HIDDEN_LAYERS+1 to account for output layer
-# for i in range(0, NUM_HIDDEN_LAYERS+1):
-#     for j in range(0, ):
-    
-#     neuron_list.append()
+# now populate the neuron list of lists
+for i in range(0, NUM_NEURON_LAYERS):
+    neuron_layer = []
+    for j in range(0, NUM_NEURONS_PER_LAYER[i]):
+        neuron_layer.append(Neuron())
+    neuron_list.append(neuron_layer)
+
