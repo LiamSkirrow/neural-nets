@@ -8,3 +8,4 @@ class Neuron:
         pass
     def test(self):
         print('hello NN!')
+        
