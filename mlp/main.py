@@ -163,13 +163,6 @@ def train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_lis
             # backpropagate and obtain the corrections to the weights and biases
             weight_matrix_corrections, bias_list_corrections = backprop(weight_matrices, weight_matrix_corrections, neuron_list, bias_list, bias_list_corrections, golden_output)
 
-            # print('matrix dims')
-            # for mat in weight_matrix_corrections:
-            #     print(np.shape(mat))
-            # print('bias dims')
-            # for vec in bias_list_corrections:
-            #     print(np.shape(vec))
-
             # apply the corrections to the weights and biases (negative of gradient)
             # take the negative, get direction of steepest descent
             for wm, wm_corr in zip(weight_matrices, weight_matrix_corrections):
