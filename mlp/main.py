@@ -179,18 +179,19 @@ def train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_lis
 
             if(i % 5000 == 0):
                 # plot the MSE (is this the same as the loss???), check if it's converging to a small value
-                print('iteration: ' + str(i))
+                # print('iteration: ' + str(i))
                 mse_history.append(sum(mean_sq_err))
                 # Update plot
                 line.set_data(range(len(mse_history)), mse_history)
                 ax.relim()
                 ax.autoscale_view()
                 plt.pause(0.001)
-                print('MSE:       ' + str(sum(mean_sq_err)))
+                # print('MSE:       ' + str(sum(mean_sq_err)))
             
             # print(golden_output)
             # input()
 
+        print('Training Complete! Close plot to continue to inference stage...')
         plt.ioff()
         plt.show()
 
@@ -206,6 +207,8 @@ def infer_mnist_images(weight_matrices, neuron_list, bias_list, path):
     fig, ax = plt.subplots()
     line, = ax.plot([], [])
     mse_history = []
+
+    correct_count = 0
 
     with open(inference_dataset_images, "rb") as image_file, \
          open(inference_dataset_labels, "rb") as label_file:
@@ -231,8 +234,8 @@ def infer_mnist_images(weight_matrices, neuron_list, bias_list, path):
             image = np.frombuffer(image_data, dtype=np.uint8)
             image = image.reshape(rows, cols)
             # sanity checking plots
-            plt.imshow(image, cmap="gray")
-            plt.show()
+            # plt.imshow(image, cmap="gray")
+            # plt.show()
 
             # flatten + normalise the data (normalised 1D array, ready for input layer of MLP)
             image = image.reshape(rows * cols)
@@ -242,14 +245,23 @@ def infer_mnist_images(weight_matrices, neuron_list, bias_list, path):
             neuron_list = feedforward(image, weight_matrices, neuron_list, bias_list)
 
             # derive the label from the label data set
-            # -> figure out the correct label for this image and create a 'y' vector/nparray that looks like [0,0...1...,0]
+            # -> figure out the correct label for this image
             sample_label  = label_file.read(1)[0]
-            print('Validation dataset, image number: ', i, ', label: ', sample_label)
 
             # derive model output
             output_layer = softmax(neuron_list[-1])
-            print('Model estimate: ', np.argmax(output_layer))
-            input()
+            model_estimate = int(np.argmax(output_layer))
+
+            # check model correctness!
+            if(model_estimate == sample_label):
+                correct_count += 1
+
+            print('Validation dataset, image number: ', i, ', label: <', sample_label, '>')
+            print('Model estimate: <', model_estimate, '>')
+        
+        model_correctness = (correct_count / float(num_images)) * 100.0
+        
+        return model_correctness
 
 if __name__ == '__main__':
     # create empty structures
@@ -275,7 +287,6 @@ if __name__ == '__main__':
     weight_matrices, bias_list = train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_list, bias_list, bias_list_corrections, path)
 
     # begin inference of validation dataset
-    infer_mnist_images(weight_matrices, neuron_list, bias_list, path)
+    model_correctness = infer_mnist_images(weight_matrices, neuron_list, bias_list, path)
 
-    # TODO
-    # don't I need to do softmax() or something???
+    print('*****\n\nFinal Model Correctness -> ', model_correctness, '%\n\n*****')
