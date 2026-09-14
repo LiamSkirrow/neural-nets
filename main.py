@@ -45,15 +45,23 @@ def init_bias_list(bias_list):
     
     return bias_list
 
+# apply an activation function, ReLU is implemented here, operates on a np array
+def apply_activation(neuron_array):
+    # implement ReLU
+    neuron_array = np.maximum(0, neuron_array)
+
+    return neuron_array
+
 def feedforward(input_sample, weight_matrices, neuron_list, bias_list):
     # assign input_sample to input layer neurons
     neuron_list[0] = input_sample
 
     # apply the matrix * vector + bias operation, across all neuron layers
     for i in range(1, NUM_NEURON_LAYERS):
+        # apply the formula W.X + b
         neuron_list[i] = weight_matrices[i-1] @ neuron_list[i-1] + bias_list[i-1]
         # apply the activation function
-        # TODO
+        neuron_list[i] = apply_activation(neuron_list[i])
     
     return neuron_list
 
@@ -67,28 +75,30 @@ if __name__ == '__main__':
     neuron_list     = init_neuron_list(neuron_list)
     bias_list       = init_bias_list(bias_list)
 
-    # print(weight_matrices)
-    # print(neuron_list)
-    # print(bias_list)
+    # open MNIST dataset
+    # TODO
 
     # sanity check size of weights matrices
     print('showing dimensions of weights matrices...')
     for i in range(0, NUM_WEIGHTS_MATRICES):
         print(np.shape((weight_matrices[i])))
 
-    # now to train the net...
-    # - read in one training sample input image
-    # - run feedforward()
-    # ?- calcuate loss function
-    # ?- run gradient descent
-    # ???
-    # - loop back to top, read in next image, repeat for whole training set
-
-
     ### debug
-    # print('Neuron output layer before feedforward')
-    # print(neuron_list[3])
-    # # now take a sample and feed it forward through the NN, input_sample must be a np.array()
-    # neuron_list = feedforward(np.random.randn(784) * 0.01, weight_matrices, neuron_list, bias_list)
-    # print('Neuron output layer after feedforward')
-    # print(neuron_list[3])
+    print('Neuron output layer before feedforward')
+    print(neuron_list[3])
+    # now take a sample and feed it forward through the NN, input_sample must be a np.array()
+    neuron_list = feedforward(np.random.randn(784) * 0.01, weight_matrices, neuron_list, bias_list)
+    print('Neuron output layer after feedforward')
+    print(neuron_list[3])
+
+    # some notes on backprop implementation...
+    # - I need to compute the total grad of the cost function, the 
+    #   independent vars of the cost function are all the weights and biases
+    #   of the neural net. So I can do it iteratively, looping over each numpy array
+    #   in neuron_list and computing the partial derivative formula in the 3b1b vid for each
+    #   incoming weight and bias, storing each one in the appropriately sized grad.C vector
+    # - then need to find the direction of steepest descent (simply negative of grad.C)
+    #   and multiply this by the learning rate? Then subtract this result from the vector containing
+    #   all the weights and biases, and that is the new set of weights and biases. Can use this vector
+    #   to update the weights matrix and bias vector, ready to run feedforward() for the next iteration.
+
