@@ -2,6 +2,7 @@ import numpy as np
 import kagglehub
 import matplotlib.pyplot as plt
 import struct
+from scipy.special import softmax
 
 # first create a configurable NN
 NUM_NEURONS_PER_LAYER    = [784,   128,  64,   10]
@@ -147,9 +148,7 @@ def train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_lis
             image = image.astype(np.float32) / 255.0
 
             # infer the image through the NN
-            feedforward(image, weight_matrices, neuron_list, bias_list)
-
-            # TODO: note, all the below should be simple function calls to keep this function as practical as possible
+            neuron_list = feedforward(image, weight_matrices, neuron_list, bias_list)
 
             # derive the label from the label data set
             # -> figure out the correct label for this image and create a 'y' vector/nparray that looks like [0,0...1...,0]
@@ -197,6 +196,60 @@ def train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_lis
 
         return weight_matrices, bias_list
 
+def infer_mnist_images(weight_matrices, neuron_list, bias_list, path):
+    
+    inference_dataset_images = path + "/t10k-images-idx3-ubyte/t10k-images-idx3-ubyte"
+    inference_dataset_labels = path + "/t10k-labels-idx1-ubyte/t10k-labels-idx1-ubyte"
+
+    # plot the MSE as we go! Hopefully it's converging?
+    plt.ion()
+    fig, ax = plt.subplots()
+    line, = ax.plot([], [])
+    mse_history = []
+
+    with open(inference_dataset_images, "rb") as image_file, \
+         open(inference_dataset_labels, "rb") as label_file:
+        # image header
+        magic      = struct.unpack(">I", image_file.read(4))[0]
+        num_images = struct.unpack(">I", image_file.read(4))[0]
+        rows       = struct.unpack(">I", image_file.read(4))[0]
+        cols       = struct.unpack(">I", image_file.read(4))[0]
+        # label header
+        label_magic = struct.unpack(">I", label_file.read(4))[0]
+        num_labels  = struct.unpack(">I", label_file.read(4))[0]
+        
+        assert num_images == num_labels
+
+        print('MNIST validation set details:')
+        print('Magic number: ' + str(magic))
+        print('Num Images: '   + str(num_images))
+
+        # iterate over all existing images
+        for i in range(0, num_images):
+            # read the successive images, plot
+            image_data = image_file.read(rows * cols)
+            image = np.frombuffer(image_data, dtype=np.uint8)
+            image = image.reshape(rows, cols)
+            # sanity checking plots
+            plt.imshow(image, cmap="gray")
+            plt.show()
+
+            # flatten + normalise the data (normalised 1D array, ready for input layer of MLP)
+            image = image.reshape(rows * cols)
+            image = image.astype(np.float32) / 255.0
+
+            # infer the image through the NN
+            neuron_list = feedforward(image, weight_matrices, neuron_list, bias_list)
+
+            # derive the label from the label data set
+            # -> figure out the correct label for this image and create a 'y' vector/nparray that looks like [0,0...1...,0]
+            sample_label  = label_file.read(1)[0]
+            print('Validation dataset, image number: ', i, ', label: ', sample_label)
+
+            # derive model output
+            output_layer = softmax(neuron_list[-1])
+            print('Model estimate: ', np.argmax(output_layer))
+            input()
 
 if __name__ == '__main__':
     # create empty structures
@@ -221,9 +274,8 @@ if __name__ == '__main__':
     print("Path to dataset files:", path)
     weight_matrices, bias_list = train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_list, bias_list, bias_list_corrections, path)
 
+    # begin inference of validation dataset
+    infer_mnist_images(weight_matrices, neuron_list, bias_list, path)
+
     # TODO
     # don't I need to do softmax() or something???
-
-    # now ready for inference...
-    # either select individual images from validation set, or run whole set statistics...
-    # TODO
