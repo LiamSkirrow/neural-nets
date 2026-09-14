@@ -13,6 +13,7 @@ NUM_NEURONS_PER_LAYER    = [784,   128,  64,   10]
 NUM_NEURON_LAYERS    = len(NUM_NEURONS_PER_LAYER)    # probably shouldn't ever be < 1
 NUM_WEIGHTS_MATRICES = NUM_NEURON_LAYERS-1
 OUTPUT_LAYER_IDX     = len(NUM_NEURONS_PER_LAYER)-1
+learning_rate        = 0.01
 
 def init_matrices(weight_matrices, weight_matrix_corrections):
     # every layer of neurons has its own matrix to represent the weights for that layer
@@ -73,41 +74,46 @@ def feedforward(image, weight_matrices, neuron_list, bias_list):
 def dSigma_dx(z_val):
     return (z_val > 0).astype(float)
 
-
 def backprop(weight_matrices, weight_matrix_corrections, neuron_list, bias_list, bias_list_corrections, golden_output):
-    
-    # iterate over NN neuron layers in reverse order, don't include input layer
-    for idx in range(NUM_NEURON_LAYERS-1, 0, -1):
-        # print(idx)
-        weight_matrix_curr = weight_matrices[idx-1]
-        neuron_list_prev   = neuron_list[idx-1]
-        neuron_list_curr   = neuron_list[idx]
-        bias_list_curr     = bias_list[idx-1]
-        
-        # iterate over all connecting weights and biases per neuron
-        for n in range(0, NUM_NEURONS_PER_LAYER[i-1]):
-            # w_jk * a_(L-1) + b(L-1)
-            z_L   = weight_matrix_curr @ neuron_list_prev + bias_list_curr
-            # 
-            dc_db = dSigma_dx(z_L) * 2.0 * (neuron_list_curr - golden_output)
-            # 
-            dc_dw = dc_db * neuron_list_prev
+    delta = None
 
-            # reshape dc_dw into a matrix for convenient subtraction later on
-            weight_corrections = dc_dw.reshape(NUM_NEURONS_PER_LAYER[n], NUM_NEURONS_PER_LAYER[n-1])
-            bias_corrections   = dc_db
+    # Work backwards: output layer -> first hidden layer
+    for idx in range(NUM_NEURON_LAYERS - 1, 0, -1):
+        W = weight_matrices[idx - 1]
+        a_prev = neuron_list[idx - 1]
+        a_curr = neuron_list[idx]
+        b = bias_list[idx - 1]
 
-        weight_matrix_corrections[idx] = weight_corrections
-        bias_corrections[idx]          = bias_corrections
+        # Recalculate pre-activation value
+        z = W @ a_prev + b
 
-    # TODO return the corrections as np arrays??? or concat together into one big vector?
-    return weight_corrections, bias_corrections
+        if(idx == NUM_NEURON_LAYERS-1):
+            # Output layer:
+            # dC/dz = dC/da * da/dz
+            delta = (2.0 * (a_curr - golden_output)* dSigma_dx(z))
+        else:
+            # Hidden layer:
+            # propagate next layer's error backwards
+            W_next = weight_matrices[idx]
+            delta = ((W_next.T @ delta)* dSigma_dx(z))
+        # dC/dW
+        weight_matrix_corrections[idx-1] = np.outer(delta, a_prev)
+        # dC/db
+        bias_list_corrections[idx-1] = delta.copy()
+
+    return weight_matrix_corrections, bias_list_corrections
 
 # process the MNIST images
 def train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_list, bias_list, bias_list_corrections, path):
 
     training_dataset_images = path + "/train-images-idx3-ubyte/train-images-idx3-ubyte"
     training_dataset_labels = path + "/train-labels-idx1-ubyte/train-labels-idx1-ubyte"
+
+    # plot the MSE as we go! Hopefully it's converging?
+    plt.ion()
+    fig, ax = plt.subplots()
+    line, = ax.plot([], [])
+    mse_history = []
 
     with open(training_dataset_images, "rb") as image_file, \
          open(training_dataset_labels, "rb") as label_file:
@@ -137,7 +143,7 @@ def train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_lis
             # plt.show()
 
             # flatten + normalise the data (normalised 1D array, ready for input layer of MLP)
-            image = image.reshape(784)
+            image = image.reshape(rows * cols)
             image = image.astype(np.float32) / 255.0
 
             # infer the image through the NN
@@ -158,19 +164,38 @@ def train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_lis
             # backpropagate and obtain the corrections to the weights and biases
             weight_matrix_corrections, bias_list_corrections = backprop(weight_matrices, weight_matrix_corrections, neuron_list, bias_list, bias_list_corrections, golden_output)
 
+            # print('matrix dims')
+            # for mat in weight_matrix_corrections:
+            #     print(np.shape(mat))
+            # print('bias dims')
+            # for vec in bias_list_corrections:
+            #     print(np.shape(vec))
+
             # apply the corrections to the weights and biases (negative of gradient)
-            # TODO
+            # take the negative, get direction of steepest descent
+            for wm, wm_corr in zip(weight_matrices, weight_matrix_corrections):
+                wm += learning_rate * wm_corr * -1.0
+            for bl, bl_corr in zip(bias_list, bias_list_corrections):
+                bl += learning_rate * bl_corr * -1.0
 
-            # plot the MSE (is this the same as the loss???), check if it's converging to a small value
-            # TODO
-
-            if(i % 100 == 0):
+            if(i % 5000 == 0):
+                # plot the MSE (is this the same as the loss???), check if it's converging to a small value
                 print('iteration: ' + str(i))
+                mse_history.append(sum(mean_sq_err))
+                # Update plot
+                line.set_data(range(len(mse_history)), mse_history)
+                ax.relim()
+                ax.autoscale_view()
+                plt.pause(0.001)
+                print('MSE:       ' + str(sum(mean_sq_err)))
             
             # print(golden_output)
             # input()
 
-        return weight_matrices, neuron_list, bias_list
+        plt.ioff()
+        plt.show()
+
+        return weight_matrices, bias_list
 
 
 if __name__ == '__main__':
@@ -191,24 +216,14 @@ if __name__ == '__main__':
         print(np.shape((weight_matrices[i])))
 
     # begin training...
-    # - open MNIST dataset
+    # open MNIST dataset
     path = kagglehub.dataset_download("hojjatk/mnist-dataset")
     print("Path to dataset files:", path)
-    weight_matrix_corrections, bias_list_corrections = train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_list, bias_list, bias_list_corrections, path)
+    weight_matrices, bias_list = train_on_mnist_images(weight_matrices, weight_matrix_corrections, neuron_list, bias_list, bias_list_corrections, path)
 
-    # take the negative, get direction of steepest descent
-    weight_matrix_corrections = -weight_matrix_corrections
-    bias_list_corrections
+    # TODO
+    # don't I need to do softmax() or something???
 
     # now ready for inference...
     # either select individual images from validation set, or run whole set statistics...
     # TODO
-
-    ### debug
-    # print('Neuron output layer before feedforward')
-    # print(neuron_list[3])
-    # # now take a sample and feed it forward through the NN, input_sample must be a np.array()
-    # neuron_list = feedforward(np.random.randn(784) * 0.01, weight_matrices, neuron_list, bias_list)
-    # print('Neuron output layer after feedforward')
-    # print(neuron_list[3])
-
